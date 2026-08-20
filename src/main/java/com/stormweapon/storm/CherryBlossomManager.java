@@ -1,8 +1,11 @@
 package com.stormweapon.storm;
 
+import com.stormweapon.registry.ModContent;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.level.block.Blocks;
@@ -19,6 +22,10 @@ public final class CherryBlossomManager {
     private static final int PETAL_ATTEMPTS_PER_PLAYER = 5;
     private static final int PETAL_RADIUS = 28;
 
+    // Refreshed well inside its own duration so the HUD icon never visibly flickers off between ticks.
+    private static final int EFFECT_DURATION_TICKS = 40;
+    private static final int EFFECT_REFRESH_THRESHOLD = 20;
+
     private CherryBlossomManager() {}
 
     public static void tick(ServerLevel level, StormSnapshot snapshot) {
@@ -26,11 +33,20 @@ public final class CherryBlossomManager {
             return;
         }
         long elapsed = Math.max(0L, level.getGameTime() - snapshot.startGameTime());
-        if (elapsed > 0L && elapsed % PLAYER_INTERVAL == 0L) {
-            for (ServerPlayer player : level.players()) {
-                if (!SkyExposure.exposed(level, player.blockPosition())) {
-                    continue;
+        boolean healTick = elapsed > 0L && elapsed % PLAYER_INTERVAL == 0L;
+        Holder<MobEffect> holder = ModContent.CHERRY_BLOSSOM_BLESSING.getHolder().orElseThrow();
+        for (ServerPlayer player : level.players()) {
+            if (!SkyExposure.exposed(level, player.blockPosition())) {
+                if (player.hasEffect(holder)) {
+                    player.removeEffect(holder);
                 }
+                continue;
+            }
+            MobEffectInstance current = player.getEffect(holder);
+            if (current == null || current.getDuration() <= EFFECT_REFRESH_THRESHOLD) {
+                player.addEffect(new MobEffectInstance(holder, EFFECT_DURATION_TICKS, 0, false, false, true), null);
+            }
+            if (healTick) {
                 player.heal(4.0F);
                 removeOneHarmfulEffect(player);
             }
