@@ -78,7 +78,7 @@ public final class BlizzardManager {
             indoors = IndoorShelter.isIndoors(level, player.blockPosition());
             shelterCheckTicks = 20;
         }
-        boolean exposed = deploymentActive && !indoors;
+        boolean exposed = deploymentActive && !indoors && !player.isCreative();
         AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
         if (exposed) {
             exposureTicks++;

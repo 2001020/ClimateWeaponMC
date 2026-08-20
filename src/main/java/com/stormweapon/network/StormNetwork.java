@@ -123,8 +123,8 @@ public final class StormNetwork {
         CHANNEL.send(packet, PacketDistributor.SERVER.noArg());
     }
 
-    public static void sendLauncherAlert(ServerPlayer player) {
-        CHANNEL.send(new LauncherAlertPacket(), PacketDistributor.PLAYER.with(player));
+    public static void sendLauncherAlert(ServerPlayer player, int secondsRemaining) {
+        CHANNEL.send(new LauncherAlertPacket(secondsRemaining), PacketDistributor.PLAYER.with(player));
     }
 
     /** Pushes the shared settings to one player, optionally opening the editor for them. */

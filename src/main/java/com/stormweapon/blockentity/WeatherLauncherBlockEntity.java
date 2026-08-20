@@ -11,9 +11,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
-import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
@@ -353,36 +350,22 @@ public final class WeatherLauncherBlockEntity extends BlockEntity {
     }
 
     /**
-     * Full-screen title/subtitle instead of a chat message, so the countdown reads as an urgent,
-     * hard-to-miss alert rather than one more line scrolling past in chat. The warning line is the
-     * (larger) title and the live countdown is the subtitle.
-     *
-     * <p>The title and its animation are only ever sent here, once, with a {@code stay} duration
-     * covering the entire countdown. Re-sending {@code ClientboundSetTitleTextPacket} every second
-     * restarts the title's fade-in animation each time even when the text is identical, which read
-     * as the whole alert flickering once a second; {@link #broadcastCountdownTick} instead only
-     * updates the subtitle text, which does not restart that animation.</p>
+     * Custom full-screen title/subtitle overlay instead of a chat message, so the countdown reads
+     * as an urgent, hard-to-miss alert rather than one more line scrolling past in chat. This is
+     * rendered client-side by {@code LauncherAlertOverlay} rather than vanilla's title system,
+     * which draws its title/subtitle at a fixed, non-configurable scale -- the custom overlay lets
+     * the alert text be sized independently of that vanilla default.
      */
     private void broadcastCountdownStart(ServerLevel serverLevel, int seconds) {
-        Component title = Component.translatable("message.stormweapon.launcher.countdown_title");
-        Component subtitle = Component.translatable("message.stormweapon.launcher.countdown_subtitle", seconds);
-        // fadeIn is brief, stay covers the whole countdown plus a small margin, fadeOut is brief:
-        // the title is shown exactly once and holds steady until the countdown itself ends.
-        ClientboundSetTitlesAnimationPacket animation = new ClientboundSetTitlesAnimationPacket(4, seconds * 20 + 20, 8);
         for (ServerPlayer nearby : nearbyPlayers(serverLevel)) {
-            nearby.connection.send(animation);
-            nearby.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
-            nearby.connection.send(new ClientboundSetTitleTextPacket(title));
-            StormNetwork.sendLauncherAlert(nearby);
+            StormNetwork.sendLauncherAlert(nearby, seconds);
         }
     }
 
-    /** Per-second refresh during an already-started countdown: subtitle text and the border ping only. */
+    /** Per-second refresh during an already-started countdown: live seconds and the alert ping. */
     private void broadcastCountdownTick(ServerLevel serverLevel, int seconds) {
-        Component subtitle = Component.translatable("message.stormweapon.launcher.countdown_subtitle", seconds);
         for (ServerPlayer nearby : nearbyPlayers(serverLevel)) {
-            nearby.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
-            StormNetwork.sendLauncherAlert(nearby);
+            StormNetwork.sendLauncherAlert(nearby, seconds);
         }
     }
 

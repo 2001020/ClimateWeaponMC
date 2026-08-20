@@ -15,6 +15,7 @@ public final class LauncherAlertClientState {
     private static final int EXPIRY_TICKS = 30;
 
     private static int ticksRemaining;
+    private static int secondsRemaining;
     private static boolean registered;
 
     private LauncherAlertClientState() {}
@@ -32,11 +33,16 @@ public final class LauncherAlertClientState {
         registered = true;
     }
 
-    public static void ping() {
+    public static void ping(int seconds) {
         ticksRemaining = EXPIRY_TICKS;
+        secondsRemaining = seconds;
     }
 
     public static boolean active() {
         return ticksRemaining > 0;
+    }
+
+    public static int secondsRemaining() {
+        return secondsRemaining;
     }
 }

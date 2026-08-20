@@ -30,7 +30,7 @@ public final class FogSlownessManager {
             if (speed == null) {
                 continue;
             }
-            boolean shouldSlow = fogging && SkyExposure.exposed(level, player.blockPosition());
+            boolean shouldSlow = fogging && SkyExposure.exposed(level, player.blockPosition()) && !player.isCreative();
             boolean currentlySlowed = speed.getModifier(MODIFIER_ID) != null;
             if (shouldSlow && !currentlySlowed) {
                 speed.addTransientModifier(new AttributeModifier(MODIFIER_ID, SPEED_PENALTY, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
