@@ -1,5 +1,7 @@
 # Climate Weapon
 
+[中文说明](README_zh.md)
+
 Climate Weapon (mod id `stormweapon`) is an original Forge mod for Minecraft Java Edition 26.2.
 Version 0.1.7 is a weaponized-weather vertical slice: a deployable launcher fires guided missiles
 that detonate at high altitude and trigger a dimension-wide extreme-weather event, on top of the
