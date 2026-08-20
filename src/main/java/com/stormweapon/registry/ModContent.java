@@ -16,8 +16,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -39,6 +44,38 @@ public final class ModContent {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, StormWeaponMod.MOD_ID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, StormWeaponMod.MOD_ID);
     public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENTS = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, StormWeaponMod.MOD_ID);
+    public static final DeferredRegister<MobEffect> MOB_EFFECTS = DeferredRegister.create(ForgeRegistries.MOB_EFFECTS, StormWeaponMod.MOD_ID);
+
+    /**
+     * Vanilla-style status effects that make the blizzard/fog debuffs and the cherry blossom buff
+     * show up in the player's effect HUD and inventory screen exactly like a potion effect, instead
+     * of being an invisible attribute change. The amplifier directly encodes the manager's own 1-99
+     * percent/heart level (amplifier = level - 1), so {@code MobEffect}'s built-in
+     * {@code amount * (amplifier + 1)} scaling reproduces the same magnitude the managers already
+     * compute.
+     */
+    public static final RegistryObject<MobEffect> BLIZZARD_CHILL = MOB_EFFECTS.register(
+        "blizzard_chill", () -> new MobEffect(MobEffectCategory.HARMFUL, 0xAFD8E8) {}
+            .addAttributeModifier(Attributes.MOVEMENT_SPEED,
+                Identifier.fromNamespaceAndPath(StormWeaponMod.MOD_ID, "effect.blizzard_chill"),
+                -0.01D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+    );
+    public static final RegistryObject<MobEffect> BLIZZARD_FRAILTY = MOB_EFFECTS.register(
+        "blizzard_frailty", () -> new MobEffect(MobEffectCategory.HARMFUL, 0x6E93B5) {}
+            .addAttributeModifier(Attributes.MAX_HEALTH,
+                Identifier.fromNamespaceAndPath(StormWeaponMod.MOD_ID, "effect.blizzard_frailty"),
+                -2.0D, AttributeModifier.Operation.ADD_VALUE)
+    );
+    public static final RegistryObject<MobEffect> FOG_CHILL = MOB_EFFECTS.register(
+        "fog_chill", () -> new MobEffect(MobEffectCategory.HARMFUL, 0x8C8C8C) {}
+            .addAttributeModifier(Attributes.MOVEMENT_SPEED,
+                Identifier.fromNamespaceAndPath(StormWeaponMod.MOD_ID, "effect.fog_chill"),
+                -0.20D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL)
+    );
+    /** Purely a HUD marker: the cherry deployment's heal/cleanse is applied directly by CherryBlossomManager. */
+    public static final RegistryObject<MobEffect> CHERRY_BLOSSOM_BLESSING = MOB_EFFECTS.register(
+        "cherry_blossom_blessing", () -> new MobEffect(MobEffectCategory.BENEFICIAL, 0xF4A8CE) {}
+    );
 
     /**
      * First endpoint a player picked with the signal connector, held on the connector's own
@@ -142,5 +179,6 @@ public final class ModContent {
         BLOCK_ENTITY_TYPES.register(bus);
         CREATIVE_MODE_TABS.register(bus);
         DATA_COMPONENTS.register(bus);
+        MOB_EFFECTS.register(bus);
     }
 }

@@ -1,17 +1,17 @@
 package com.stormweapon.storm;
 
-import com.stormweapon.StormWeaponMod;
+import com.stormweapon.registry.ModContent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.ChunkPos;
@@ -21,14 +21,13 @@ import net.minecraft.world.level.block.SnowLayerBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.registries.RegistryObject;
 
 import java.util.HashSet;
 import java.util.Set;
 
 /** Server-authoritative accumulation and exposure penalties for a blizzard deployment. */
 public final class BlizzardManager {
-    private static final Identifier SPEED_ID = Identifier.fromNamespaceAndPath(StormWeaponMod.MOD_ID, "blizzard_speed_loss");
-    private static final Identifier MAX_HEALTH_ID = Identifier.fromNamespaceAndPath(StormWeaponMod.MOD_ID, "blizzard_max_health_loss");
     private static final String DATA_KEY = "StormWeaponBlizzard";
     private static final String SPEED_KEY = "SpeedPercent";
     private static final String HEALTH_KEY = "MaxHealthHearts";
@@ -43,6 +42,10 @@ public final class BlizzardManager {
     private static final int SNOW_INTERVAL = 10;
     private static final int SNOW_ATTEMPTS_PER_PLAYER = 12;
     private static final int SNOW_RADIUS = 32;
+    // Refreshed well inside its own duration so the HUD icon never visibly flickers off between
+    // the once-a-second updates below.
+    private static final int EFFECT_DURATION_TICKS = 40;
+    private static final int EFFECT_REFRESH_THRESHOLD = 20;
 
     private BlizzardManager() {}
 
@@ -71,14 +74,12 @@ public final class BlizzardManager {
         int recoveryTicks = data.getIntOr(RECOVERY_KEY, 0);
         int shelterCheckTicks = data.getIntOr(SHELTER_CHECK_KEY, 0) - 1;
         boolean indoors = data.getBooleanOr(INDOOR_KEY, false);
-        int previousSpeed = speedPercent;
-        int previousHealth = healthHearts;
 
         if (deploymentActive && shelterCheckTicks <= 0) {
             indoors = IndoorShelter.isIndoors(level, player.blockPosition());
             shelterCheckTicks = 20;
         }
-        boolean exposed = deploymentActive && !indoors;
+        boolean exposed = deploymentActive && !indoors && !player.isCreative() && !player.isSpectator();
         AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
         if (exposed) {
             exposureTicks++;
@@ -110,11 +111,10 @@ public final class BlizzardManager {
             }
         }
 
-        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        boolean modifiersMissing = speed != null && speedPercent > 0 && speed.getModifier(SPEED_ID) == null
-            || maxHealth != null && healthHearts > 0 && maxHealth.getModifier(MAX_HEALTH_ID) == null;
-        if (speedPercent != previousSpeed || healthHearts != previousHealth || modifiersMissing) {
-            applyModifiers(player, speedPercent, healthHearts);
+        syncLevelEffect(player, ModContent.BLIZZARD_CHILL, speedPercent);
+        syncLevelEffect(player, ModContent.BLIZZARD_FRAILTY, healthHearts);
+        if (player.getHealth() > player.getMaxHealth()) {
+            player.setHealth(player.getMaxHealth());
         }
 
         data.putInt(SPEED_KEY, speedPercent);
@@ -127,29 +127,24 @@ public final class BlizzardManager {
         root.put(ServerPlayer.PERSISTED_NBT_TAG, persisted);
     }
 
-    private static void applyModifiers(ServerPlayer player, int speedPercent, int healthHearts) {
-        AttributeInstance speed = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        AttributeInstance maxHealth = player.getAttribute(Attributes.MAX_HEALTH);
-        if (speed != null) {
-            if (speedPercent <= 0) {
-                speed.removeModifier(SPEED_ID);
-            } else {
-                speed.addOrUpdateTransientModifier(new AttributeModifier(
-                    SPEED_ID, -speedPercent / 100.0D, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL
-                ));
+    /**
+     * Applies (or clears) a vanilla-style {@link MobEffectInstance} whose amplifier encodes the
+     * manager's own 1-based level, so it shows up in the effect HUD/inventory screen like any other
+     * potion effect. The underlying attribute modifier is managed automatically by the effect
+     * itself once added -- no separate {@code AttributeInstance} bookkeeping is needed here.
+     */
+    private static void syncLevelEffect(ServerPlayer player, RegistryObject<MobEffect> effect, int level) {
+        Holder<MobEffect> holder = effect.getHolder().orElseThrow();
+        if (level <= 0) {
+            if (player.hasEffect(holder)) {
+                player.removeEffect(holder);
             }
+            return;
         }
-        if (maxHealth != null) {
-            if (healthHearts <= 0) {
-                maxHealth.removeModifier(MAX_HEALTH_ID);
-            } else {
-                maxHealth.addOrUpdateTransientModifier(new AttributeModifier(
-                    MAX_HEALTH_ID, -2.0D * healthHearts, AttributeModifier.Operation.ADD_VALUE
-                ));
-            }
-            if (player.getHealth() > player.getMaxHealth()) {
-                player.setHealth(player.getMaxHealth());
-            }
+        int amplifier = level - 1;
+        MobEffectInstance current = player.getEffect(holder);
+        if (current == null || current.getAmplifier() != amplifier || current.getDuration() <= EFFECT_REFRESH_THRESHOLD) {
+            player.addEffect(new MobEffectInstance(holder, EFFECT_DURATION_TICKS, amplifier, false, false, true), null);
         }
     }
 
