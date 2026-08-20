@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "stormweapon:block/weather_missile_launcher" },
+    "facing=south": { "model": "stormweapon:block/weather_missile_launcher", "y": 180 },
+    "facing=west": { "model": "stormweapon:block/weather_missile_launcher", "y": 270 },
+    "facing=east": { "model": "stormweapon:block/weather_missile_launcher", "y": 90 }
+  }
+}

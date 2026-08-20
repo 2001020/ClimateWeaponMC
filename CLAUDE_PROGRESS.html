@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Storm Weapon · Claude Code Progress</title>
+  <style>
+    :root { color-scheme: dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    body { margin: 0; background: #071018; color: #d7e7ee; }
+    header { position: sticky; top: 0; padding: 16px 22px; background: rgba(7,16,24,.94); border-bottom: 1px solid #29404d; backdrop-filter: blur(12px); }
+    h1 { margin: 0 0 7px; font: 650 18px/1.2 system-ui, sans-serif; }
+    .meta { display: flex; gap: 18px; color: #8fb4c5; font-size: 12px; }
+    .live { color: #6fe7a7; }
+    main { padding: 18px 22px 60px; }
+    .entry { margin: 0 0 11px; padding: 10px 12px; border-left: 3px solid #365665; background: #0b1821; white-space: pre-wrap; word-break: break-word; line-height: 1.48; }
+    .assistant { border-color: #57b7d8; }
+    .tool { border-color: #d7aa52; color: #f2dcac; }
+    .result { border-color: #6fe7a7; color: #a8f0c9; }
+    .error { border-color: #ef6c73; color: #ffb5ba; }
+    .dim { color: #7895a2; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Storm Weapon · Claude Code 实时进度</h1>
+    <div class="meta"><span id="status" class="live">● 连接中</span><span id="count">0 events</span><span>Opus 5 · High</span><span>每 1 秒刷新</span></div>
+  </header>
+  <main id="feed"><div class="entry dim">等待 Claude Code 流式输出…</div></main>
+  <script>
+    const feed = document.querySelector('#feed');
+    const status = document.querySelector('#status');
+    const count = document.querySelector('#count');
+    let lastText = '';
+
+    function renderLine(event) {
+      if (event.type === 'runner_exit') return { cls: event.exit_code === 0 ? 'result' : 'error', text: `PROCESS EXIT ${event.exit_code}` };
+      if (event.type === 'system') return { cls: 'dim', text: `SYSTEM ${event.subtype || ''} ${event.model || ''}`.trim() };
+      if (event.type === 'result') return { cls: event.is_error ? 'error' : 'result', text: `${event.is_error ? 'ERROR' : 'DONE'}\n${event.result || event.subtype || ''}` };
+      if (event.type === 'stream_event') {
+        const stream = event.event || {};
+        if (stream.type === 'content_block_start' && stream.content_block?.type === 'tool_use') {
+          return { cls: 'tool', text: `TOOL ${stream.content_block.name}` };
+        }
+        if (stream.type === 'content_block_delta') {
+          const delta = stream.delta || {};
+          if (delta.type === 'text_delta') return { cls: 'assistant', text: delta.text };
+          if (delta.type === 'input_json_delta' && delta.partial_json) return { cls: 'tool', text: delta.partial_json };
+        }
+        return null;
+      }
+      if (event.type === 'assistant') {
+        const blocks = event.message?.content || [];
+        const text = blocks.map(block => block.type === 'text' ? block.text : block.type === 'tool_use' ? `TOOL ${block.name}\n${JSON.stringify(block.input, null, 2)}` : '').filter(Boolean).join('\n');
+        return text ? { cls: 'assistant', text } : null;
+      }
+      if (event.type === 'user') {
+        const blocks = event.message?.content || [];
+        const text = blocks.map(block => block.type === 'tool_result' ? `RESULT ${block.tool_use_id || ''}\n${typeof block.content === 'string' ? block.content : JSON.stringify(block.content)}` : '').filter(Boolean).join('\n');
+        return text ? { cls: 'tool', text } : null;
+      }
+      return null;
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch(`claude-fix-progress.jsonl?t=${Date.now()}`, { cache: 'no-store' });
+        const raw = await response.text();
+        if (raw === lastText) return;
+        lastText = raw;
+        const events = raw.split(/\n+/).filter(Boolean).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean);
+        const entries = events.map(renderLine).filter(Boolean);
+        feed.replaceChildren(...entries.slice(-350).map(item => {
+          const node = document.createElement('div');
+          node.className = `entry ${item.cls}`;
+          node.textContent = item.text;
+          return node;
+        }));
+        count.textContent = `${events.length} events`;
+        const exit = events.findLast?.(event => event.type === 'runner_exit');
+        status.textContent = exit ? (exit.exit_code === 0 ? '● 已完成' : '● 已失败') : '● 运行中';
+        status.className = exit?.exit_code ? 'error' : 'live';
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      } catch (error) {
+        status.textContent = '● 无法连接';
+        status.className = 'error';
+      }
+    }
+    refresh();
+    setInterval(refresh, 1000);
+  </script>
+</body>
+</html>

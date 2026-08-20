@@ -1,0 +1,38 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+
+# Files from Forge MDK
+forge_README.txt
+forge*changelog.txt
+
+# macOS
+.DS_Store
+
+# build/dist artifacts
+dist
+
+# local launcher config
+.hmcl
+
+# Claude session logs (large, conversation transcripts)
+*.jsonl

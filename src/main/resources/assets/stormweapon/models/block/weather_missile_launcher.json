@@ -1,0 +1,18 @@
+{
+  "ambientocclusion": false,
+  "textures": {
+    "metal": "minecraft:block/iron_block",
+    "dark": "minecraft:block/deepslate_tiles",
+    "particle": "minecraft:block/iron_block"
+  },
+  "elements": [
+    {
+      "from": [1, 0.25, 1], "to": [15, 2.25, 15],
+      "faces": {
+        "down": {"texture": "#dark"}, "up": {"texture": "#metal"},
+        "north": {"texture": "#dark"}, "south": {"texture": "#dark"},
+        "west": {"texture": "#dark"}, "east": {"texture": "#dark"}
+      }
+    }
+  ]
+}
