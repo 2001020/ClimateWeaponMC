@@ -85,6 +85,21 @@ ATMOSPHERIC_WAVE (10 s ramp, 4 s visible wave, 2000-block radius)
 
 The active effect is dimension-wide, not regional.
 
+### Blizzard and Cherry Blossom payloads
+
+- **Blizzard Missile**: forces blizzard weather in every biome for 5 minutes and lets vanilla snow
+  layers accumulate normally regardless of biome temperature. Players caught outdoors take
+  periodic freezing damage, lose movement speed by 1% every second while exposed (stacking up to
+  100%), and slowly lose max health the longer they stay exposed. Shelter is a strict indoor check
+  (standing under a tree does not count); stepping indoors lets any accumulated debuff fade back to
+  normal over time instead of clearing instantly.
+- **Cherry Blossom Missile**: no negative effects. For 5 minutes it showers every biome with
+  vanilla cherry-leaf petals that accumulate on the ground, while players caught in the open
+  gradually clear their harmful effects and regenerate 2 hearts every second.
+- Both the blizzard/fog debuffs and the cherry blossom buff show up as their own status effect
+  icons in the effect HUD and inventory screen, exactly like a vanilla potion effect. None of the
+  weather debuffs apply to players in creative or spectator mode.
+
 ### Plain command weather
 
 For quicker regional testing without a missile, the storm lifecycle can still be driven directly by
